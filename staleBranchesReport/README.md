@@ -1,5 +1,5 @@
 
-# 🪵 Stale Git Branch Report
+# 🍂 Stale Git Branch Report
 
 A PowerShell script that scans your Git repository and generates a styled **HTML report** showing stale branches, their metadata, and merge status — helping you keep your Git history clean and healthy.
 
