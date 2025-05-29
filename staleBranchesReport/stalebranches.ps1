@@ -56,7 +56,7 @@ param (
 )
 
 function Remove-CacheFolder {
-    $cacheDir = "$env:TEMP\git-cache"
+    $cacheDir = Join-Path ([System.IO.Path]::GetTempPath()) 'git-cache'
 
     if (Test-Path $cacheDir) {
         Remove-Item -Path $cacheDir -Recurse
@@ -85,8 +85,7 @@ function Get-GitHubRepoInfo {
 function Get-CachedGitOutput {
     param (
         [string]$GitCommand,
-        [int]$MaxAgeMinutes = 60,
-        [switch]$Debug= $false
+        [int]$MaxAgeMinutes = 60
     )
 
     $hash = [System.BitConverter]::ToString(
@@ -95,21 +94,13 @@ function Get-CachedGitOutput {
         )
     ) -replace '-', ''
 
-    if ($Debug) { 
-        Write-Host "Hash: " $hash
-        Write-Host "Cmd : " $GitCommand 
-    }
+    $cacheDir = Join-Path ([System.IO.Path]::GetTempPath()) 'git-cache'
 
-    $cacheDir = "$env:TEMP\git-cache"
     if (-not (Test-Path $cacheDir)) {
         New-Item -Path $cacheDir -ItemType Directory | Out-Null
     }
 
     $cachePath = Join-Path $cacheDir "$hash.txt"
-
-    if ($Debug) {
-        Write-Host "File: " $cachePath
-    }
 
     if (Test-Path $cachePath) {
         $age = (Get-Date) - (Get-Item $cachePath).LastWriteTime
@@ -247,7 +238,6 @@ function applyFilters() {
     var matchingAuthors = new Set();
     var matchingBranches = [];
 
-    // Pass 1: Filter branch table and collect matching authors
     var branchRows = branchTable.getElementsByTagName("tr");
     for (var i = 1; i < branchRows.length; i++) {
         var row = branchRows[i];
@@ -268,7 +258,6 @@ function applyFilters() {
         }
     }
 
-    // Pass 2: Filter author table based on matching branch authors
     var authorRows = authorTable.getElementsByTagName("tr");
     for (var i = 1; i < authorRows.length; i++) {
         var row = authorRows[i];
@@ -288,7 +277,10 @@ function clearFilters() {
 
 <body>
     <div class="report-header split-logo">
-        <h1>Stale Git Branch Report</h1>
+        <div>
+            <h1>Stale Git Branch Report</h1>
+            <h3 style="color:#ccc; margin-top: -0.15em;">Generated for: {REPO}</h3>
+        </div>
         <img src="https://raw.githubusercontent.com/gmcnickle/gittools/main/assets/gitTools-dk.png" alt="Logo">
     </div>
 
@@ -387,18 +379,17 @@ function clearFilters() {
             "<td>$message</td>",
             "</tr>"
         ) -join ''
-
     }) -join "`n"
 
-
-    $htmlContent = $HtmlTemplate -replace '\{TOTAL\}', $Results.Count
-    $htmlContent = $htmlContent -replace '\{DATE\}', (Get-Date).ToString("yyyy-MM-dd HH:mm")
-    $htmlContent = $htmlContent -replace '\{AUTHOR_ROWS\}', $authorRows.Trim()
-    $htmlContent = $htmlContent -replace '\{BRANCH_ROWS\}', $branchRows.Trim()
+    $htmlContent = $HtmlTemplate -replace '{TOTAL}', $Results.Count
+    $htmlContent = $htmlContent -replace '{DATE}', (Get-Date).ToString("yyyy-MM-dd HH:mm")
+    $htmlContent = $htmlContent -replace '{AUTHOR_ROWS}', $authorRows.Trim()
+    $htmlContent = $htmlContent -replace '{BRANCH_ROWS}', $branchRows.Trim()
+    $htmlContent = $htmlContent -replace '{REPO}', "$GitHubOwner/$GitHubRepo"
 
     Set-Content -Path $OutputPath -Value $htmlContent -Encoding UTF8
     Write-Host "HTML report saved to $OutputPath"
-} 
+}
 
 function Get-CommitInfo($branch) {
     $cmd = "git log -1 --pretty=format:`"%ci|%an|%s`" $branch"
@@ -602,6 +593,10 @@ if ($Host.Name -eq 'Visual Studio Code Host') {
     Write-Debug 'PowerShell Integrated Console'
     # placeholder for any debug code needed.
     # used primarly to set command line options when it's not practicle to use launch.json
+
+    $Location = 'D:\Projects\JCI\acvs-exacq-dvr'
+    $Limit = 10
+    $IncludeRemote = $true
 } 
 
  if ($CleanCache) {
