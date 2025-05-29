@@ -325,7 +325,12 @@ function clearFilters() {
             {BRANCH_ROWS}
         </table>
     </div>
-</body>
+
+    <footer style="margin-top: 40px; padding-top: 10px; border-top: 1px solid #444; text-align: center; font-size: 0.9em; color: #888;">
+        <p>&copy; $(Get-Date -Format 'yyyy') <a href="https://github.com/gmcnickle" target="_blank" style="color: #66ccff; text-decoration: none;">Gary McNickle</a>. All rights reserved.  🍂</p>
+    </footer>
+
+    </body>
 </html>
 "@
 
