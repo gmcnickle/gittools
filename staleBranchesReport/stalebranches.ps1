@@ -287,11 +287,10 @@ function clearFilters() {
 </script>
 
 <body>
-<div class="report-header split-logo">
-    <h1>Stale Git Branch Report</h1>
-    <img src="https://private-user-images.githubusercontent.com/68762689/448833367-d2bbe225-feb9-4fa0-865e-f2881b3e09f9.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDg1MjMxOTMsIm5iZiI6MTc0ODUyMjg5MywicGF0aCI6Ii82ODc2MjY4OS80NDg4MzMzNjctZDJiYmUyMjUtZmViOS00ZmEwLTg2NWUtZjI4ODFiM2UwOWY5LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA1MjklMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNTI5VDEyNDgxM1omWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTgxNTVlNzhhZDlkMDIzYjFhOTUwYjUyOTg3NzA3ZjNkYThjNDM5ZWE0ZWI2OWYxN2EzMmU5N2FmOTgxOThlYWEmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.nMFYYwhgDXFu5taNEnlohoU6wNEhs7FA5v88vbfl8EI" alt="Logo">
-</div>
-
+    <div class="report-header split-logo">
+        <h1>Stale Git Branch Report</h1>
+        <img src="https://raw.githubusercontent.com/gmcnickle/gittools/main/assets/gitTools-dk.png" alt="Logo">
+    </div>
 
     <h2>Summary</h2>
     <table class="summary-table">
@@ -589,7 +588,7 @@ function Get-StaleGitBranches {
     $results = $results | Sort-Object LastCommit -Descending
 
     if (-not $OutputPath) {
-        $OutputPath = Join-Path -Path [Environment]::GetFolderPath("MyDocuments") -ChildPath "stale-branches.html"
+        $OutputPath = Join-Path -Path ([Environment]::GetFolderPath("MyDocuments")) -ChildPath "stale-branches.html"
     }
 
     $authorSummary = $results | Group-Object Author | Sort-Object Count -Descending
@@ -599,6 +598,12 @@ function Get-StaleGitBranches {
     return $results
 }
 
+if ($Host.Name -eq 'Visual Studio Code Host') {
+    Write-Debug 'PowerShell Integrated Console'
+    # placeholder for any debug code needed.
+    # used primarly to set command line options when it's not practicle to use launch.json
+} 
+
  if ($CleanCache) {
     Remove-CacheFolder
 }
@@ -607,11 +612,5 @@ if ($Location) {
     Set-Location $Location
 }
 
-if ($Host.Name -eq 'Visual Studio Code Host') {
-    Write-Debug 'PowerShell Integrated Console'
-
-    # placeholder for any debug code needed.
-    # used primarly to set command line options when it's not practicle to use launch.json
-} 
 
 Get-StaleGitBranches @PSBoundParameters
