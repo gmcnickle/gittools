@@ -487,13 +487,29 @@ function Get-BranchStats($branch, $base) {
     }
 }
 
+function Get-FilteredBoundParams {
+    param (
+        [hashtable]$AllParams,
+        [string[]]$AllowList
+    )
+
+    $result = @{}
+    foreach ($key in $AllowList) {
+        if ($AllParams.ContainsKey($key)) {
+            $result[$key] = $AllParams[$key]
+        }
+    }
+    return $result
+}
+
+
 function Get-StaleGitBranches {
     [CmdletBinding()]
     param (
         [int]$OlderThanDays = 0,
         [switch]$IncludeRemote = $false,
         [string]$OutputPath = "",
-        [int]$Limit = 0        
+        [int]$Limit = 0
     )
 
     $branchCmd = if ($IncludeRemote) {
@@ -589,17 +605,7 @@ function Get-StaleGitBranches {
     return $results
 }
 
-if ($Host.Name -eq 'Visual Studio Code Host') {
-    Write-Debug 'PowerShell Integrated Console'
-    # placeholder for any debug code needed.
-    # used primarly to set command line options when it's not practicle to use launch.json
-
-    $Location = 'D:\Projects\JCI\acvs-exacq-dvr'
-    $Limit = 10
-    $IncludeRemote = $true
-} 
-
- if ($CleanCache) {
+if ($CleanCache) {
     Remove-CacheFolder
 }
 
@@ -607,5 +613,5 @@ if ($Location) {
     Set-Location $Location
 }
 
-
-Get-StaleGitBranches @PSBoundParameters
+$filteredParams = Get-FilteredBoundParams -AllParams $PSBoundParameters -AllowList @('OlderThanDays', 'IncludeRemote', 'OutputPath', 'Limit')
+Get-StaleGitBranches  @filteredParams
