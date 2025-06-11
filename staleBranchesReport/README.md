@@ -16,8 +16,6 @@ A PowerShell script that scans your Git repository and generates a styled **HTML
 - Supports local and remote branches
 - Optional **caching** for fast repeated runs
 
----
-
 ## 🚀 Usage
 
 ### 🔧 Parameters
@@ -42,8 +40,6 @@ Get-StaleGitBranches.ps1 [-OlderThanDays <int>] [-IncludeRemote] [-CleanCache]
 .\Get-StaleGitBranches.ps1 -IncludeRemote -OlderThanDays 30 -CleanCache
 ```
 
----
-
 ## 📁 Output
 
 The report is saved as an HTML file (e.g. `stale-branches.html`) and includes:
@@ -53,37 +49,30 @@ The report is saved as an HTML file (e.g. `stale-branches.html`) and includes:
 - GitHub links to each branch
 - Merge status and open PR indicators
 
----
-
 ## 🔍 Requirements
 
 - PowerShell 5.1+ or PowerShell Core
 - Git CLI installed and available in PATH
 
----
-
 ## 🧹 Why?
 
 Over time, Git branches accumulate — many of them forgotten after being merged or abandoned. This tool helps you **audit**, **track**, and **clean** them up safely.
-
----
 
 ## 📷 Screenshots
 
 ![Report Screenshot](https://raw.githubusercontent.com/gmcnickle/gittools/main/assets/stalebranches-screenshot.png)
 
----
-
 ## 🤝 Contributions
 
 Feel free to fork, submit PRs, or suggest improvements via GitHub Issues.
-
----
 
 ## 📜 License
 
 MIT License — use freely, modify proudly.
 
----
+## Attribution
 
-> Written by [@gmcnickle](https://github.com/gmcnickle)
+**Primary Author:** Gary McNickle (gmcnickle@outlook.com)<br>
+**Co-Author & Assistant:** ChatGPT (OpenAI)
+
+This script was collaboratively designed and developed through interactive sessions with ChatGPT, combining human experience and AI-driven support to solve real-world development challenges.
