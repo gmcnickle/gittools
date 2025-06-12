@@ -57,6 +57,84 @@
 - If path-fixing is enabled, your original `~/.ssh/config` is backed up as `config.bak`.
 
 
+## 🛠️ Common Issues and Solutions
+
+### ❌ GitHub API returns "401 Unauthorized"
+**Symptoms**:
+- GitHub key verification fails with a 401 error.
+- You see a message like:
+  ```
+  GitHub API request failed
+      Response status code does not indicate success: 401 (Unauthorized).
+  ```
+
+**Possible Causes**:
+- The Personal Access Token (PAT) is missing required scopes.
+- The token is expired or has been revoked.
+- The token is not authorized for the organization.
+
+**Solutions**:
+- Ensure the PAT includes at least the `read:public_key` and `user` scopes.
+- Re-authorize the token for all organizations under your GitHub account.
+- If using GitHub Enterprise, check the correct API URL is specified via `-GitHubApiBaseUrl`.
+
+---
+
+### ❌ "SSH agent not running" or "Error connecting to agent"
+**Symptoms**:
+- You see a warning like:
+  ```
+  SSH agent not running for alias 'JCI'
+  ```
+
+**Possible Causes**:
+- The OpenSSH Authentication Agent service is not running.
+- `ssh-agent` is not started in your current terminal session.
+
+**Solutions**:
+- Start the SSH agent service in an ***elevated shell*** using:
+  ```powershell
+  Start-Service ssh-agent
+  ```
+- Or start it manually in your terminal:
+  ```bash
+  eval "$(ssh-agent -s)"
+  ```
+
+---
+
+### ❌ Public key is not registered with GitHub
+**Symptoms**:
+- You see:
+  ```
+  ❌ This public key is NOT registered with GitHub.
+  ```
+
+**Possible Causes**:
+- Your local `.pub` key file does not match any keys registered on GitHub.
+- Wrong key used in your SSH config file.
+
+**Solutions**:
+- Add the correct public key to your GitHub account under Settings → SSH and GPG keys.
+- Double-check that `IdentityFile` in your SSH config points to the expected key.
+
+---
+
+### ⚠️ IdentityFile uses backslashes (`\`) instead of forward slashes (`/`)
+**Symptoms**:
+- SSH connections fail unexpectedly.
+- The script cannot find or read your key files.
+
+**Possible Causes**:
+- `IdentityFile` paths in your `~/.ssh/config` use `\` (Windows-style), which can break parsing.
+
+**Solutions**:
+- Run the script with the `-FixIdentityPaths` flag to automatically fix slashes:
+  ```powershell
+  .\Validate-GitSSHSetup.ps1 -FixIdentityPaths
+  ```
+
+
 ## 📄 License
 
 MIT License

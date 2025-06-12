@@ -10,29 +10,57 @@
     Optional base API URL for GitHub Enterprise (default: https://api.github.com).
 .PARAMETER FixIdentityPaths
     Optional. Fixes backslashes in IdentityFile paths inside your SSH config file.
+.PARAMETER LogFile
+    Optional path to a log file where error details will be written.
 .NOTES
-    Author: ChatGPT
+    Author: ChatGPT, Gary McNickle
 #>
 
 param (
     [string]$GitHubToken,
     [string]$GitHubApiBaseUrl = "https://api.github.com",
-    [switch]$FixIdentityPaths
+    [switch]$FixIdentityPaths,
+    [string]$LogFile
 )
 
 $sshConfigPath = "$env:USERPROFILE\.ssh\config"
 $defaultKey = "$env:USERPROFILE\.ssh\id_ed25519"
 
+function Write-CheckResult {
+    param (
+        [Parameter(Mandatory)]
+        [string]$Message,
+
+        [Parameter(Mandatory)]
+        [bool]$Success,
+
+        [int]$Indent = 0,
+
+        [string]$Detail = $null
+    )
+
+    $icon = if ($Success) { "✅" } else { "❌" }
+    $paddedMessage = "{0,-78}" -f (" " * $Indent + $Message)
+    Write-Host "$paddedMessage $icon"
+
+    if (-not $Success -and $Detail) {
+        $log = "❌ $Message`n    $Detail`n"
+        if ($LogFile) {
+            Add-Content -Path $LogFile -Value $log
+        } else {
+            Write-Host $log -ForegroundColor DarkGray
+        }
+    }
+}
+
 function Repair-IdentityPathsInConfig {
     if (!(Test-Path $sshConfigPath)) {
-        Write-Warning "SSH config file not found, cannot fix paths: $sshConfigPath"
+        Write-CheckResult -Message "SSH config file not found for path fix" -Success $false
         return
     }
 
-    Write-Host "Fixing backslashes in IdentityFile paths..." -ForegroundColor Cyan
     $configBackup = "$sshConfigPath.bak"
     Copy-Item $sshConfigPath $configBackup -Force
-    Write-Debug "Backup created at $configBackup"
 
     (Get-Content $sshConfigPath) |
         ForEach-Object {
@@ -43,14 +71,13 @@ function Repair-IdentityPathsInConfig {
             }
         } | Set-Content $sshConfigPath
 
-    Write-Host "SSH config updated. Backup saved as: $configBackup" -ForegroundColor Yellow
+    Write-CheckResult -Message "Repaired backslashes in IdentityFile paths" -Success $true
 }
 
 function Read-SshConfig {
-    Write-Debug "Parsing SSH config: $sshConfigPath"
     $configEntries = @{}
     if (!(Test-Path $sshConfigPath)) {
-        Write-Error "SSH config file not found: $sshConfigPath"
+        Write-CheckResult -Message "SSH config file not found: $sshConfigPath" -Success $false
         return $configEntries
     }
 
@@ -61,18 +88,17 @@ function Read-SshConfig {
 
         if ($trimmed -like "Host *") {
             $currentHost = $trimmed -replace "Host\s+", ""
-            Write-Debug "Found host: $($currentHost)"
             $configEntries[$currentHost] = @{ IdentityFile = $null }
             continue
         }
 
         if ($currentHost -and $trimmed -match "^IdentityFile\s+(.+)$") {
-            $path = $matches[1].Trim().Replace('\', '/')
-            Write-Debug "Found IdentityFile for $($currentHost): $path"
+            $path = $matches[1].Trim().Replace('\\', '/')
             $configEntries[$currentHost]["IdentityFile"] = $path
         }
     }
 
+    Write-CheckResult -Message "Parsed SSH config and extracted aliases" -Success ($configEntries.Count -gt 0)
     return $configEntries
 }
 
@@ -82,13 +108,13 @@ function Get-GitHubSshKeys {
         [string]$ApiBaseUrl
     )
 
-    Write-Debug "Fetching SSH keys from GitHub API at $ApiBaseUrl"
     try {
         $headers = @{ Authorization = "token $Token" }
         $response = Invoke-RestMethod -Uri "$ApiBaseUrl/user/keys" -Headers $headers
+        Write-CheckResult -Message "Fetched SSH keys from GitHub API" -Success $true
         return $response
     } catch {
-        Write-Warning "GitHub API request failed: $($_.Exception.Message)"
+        Write-CheckResult -Message "GitHub API request failed" -Success $false -Detail $_.Exception.Message
         return @()
     }
 }
@@ -100,7 +126,7 @@ function Compare-PublicKey-ToGitHub {
     )
 
     if (!(Test-Path $PublicKeyPath)) {
-        Write-Warning "Public key not found: $PublicKeyPath"
+        Write-CheckResult -Message "Public key not found: $PublicKeyPath" -Success $false
         return
     }
 
@@ -108,11 +134,7 @@ function Compare-PublicKey-ToGitHub {
     $localKeyClean = $localKey -replace '(\Assh-(rsa|ed25519) [A-Za-z0-9+/=]+).*', '$1'
 
     $found = $GitHubKeys | Where-Object { $_.key -eq $localKeyClean }
-    if ($found) {
-        Write-Host "✅ Local public key matches a registered GitHub SSH key titled: '$($found.title)'" -ForegroundColor Green
-    } else {
-        Write-Warning "❌ This public key is NOT registered with GitHub."
-    }
+    Write-CheckResult -Message "Local public key match on GitHub" -Success ($found -ne $null) -Indent 4
 }
 
 function Test-SshAgentRunning {
@@ -127,53 +149,52 @@ function Test-IdentityFileConfiguration {
         [array]$GitHubKeys
     )
 
-    Write-Host "`n== [$alias] Validating IdentityFile: $identityFilePath ==" -ForegroundColor Cyan
-    Write-Debug "Checking identity file: $identityFilePath"
+    $identityExists = Test-Path $identityFilePath
+    Write-CheckResult -Message "Validating IdentityFile for alias '$alias'" -Success $identityExists
 
-    if (!(Test-Path $identityFilePath)) {
-        Write-Warning "Private key not found: $identityFilePath"
+    if (-not $identityExists) {
         return
     }
 
     $publicKey = "$identityFilePath.pub"
     if (!(Test-Path $publicKey)) {
-        Write-Warning "Public key not found: $publicKey"
+        Write-CheckResult -Message "Public key not found for alias '$alias'" -Success $false -Indent 4
     }
 
-    $privateAcl = Get-Acl $identityFilePath
-    Write-Host "Private key permissions:" -ForegroundColor Green
-    $privateAcl.Access | Format-Table
-
     if (Test-SshAgentRunning) {
-        Write-Debug "Adding key to ssh-agent: $identityFilePath"
-        ssh-add $identityFilePath | Out-Null
+        try {
+            ssh-add $identityFilePath | Out-Null
+            Write-CheckResult -Message "Added key to ssh-agent for alias '$alias'" -Success $true -Indent 4
+        } catch {
+            Write-CheckResult -Message "Failed to add key to ssh-agent for alias '$alias'" -Success $false -Indent 4 -Detail $_.Exception.Message
+        }
     } else {
-        Write-Warning "SSH agent not running. Skipping ssh-add for '$identityFilePath'"
+        Write-CheckResult -Message "SSH agent not running for alias '$alias'" -Success $false -Indent 4
     }
 
     if ($GitHubKeys) {
         Compare-PublicKey-ToGitHub -PublicKeyPath $publicKey -GitHubKeys $GitHubKeys
     }
 
-    Write-Host "Testing SSH connection for alias '$alias'..." -ForegroundColor Yellow
-    ssh -T $alias
+    $sshTest = ssh -T $alias 2>&1
+    $success = ($sshTest -match "successfully authenticated")
+    Write-CheckResult -Message "SSH test for alias '$alias'" -Success $success -Indent 4 -Detail $sshTest
 }
 
 if ($FixIdentityPaths) {
     Repair-IdentityPathsInConfig
 }
 
-Write-Host "== Parsing SSH Config File ==" -ForegroundColor Cyan
+Write-CheckResult -Message "Reading and parsing SSH config" -Success (Test-Path $sshConfigPath)
 $configMap = Read-SshConfig
 
 $gitHubKeys = @()
 if ($GitHubToken) {
-    Write-Host "`n== Fetching SSH keys from GitHub ==" -ForegroundColor Cyan
     $gitHubKeys = Get-GitHubSshKeys -Token $GitHubToken -ApiBaseUrl $GitHubApiBaseUrl
 }
 
 if ($configMap.Count -eq 0) {
-    Write-Warning "No Host entries with IdentityFile found in SSH config. Defaulting to: $defaultKey"
+    Write-CheckResult -Message "No IdentityFile aliases found, defaulting to ~/.ssh/id_ed25519" -Success (Test-Path $defaultKey)
     Test-IdentityFileConfiguration -alias "git@github.com" -identityFilePath $defaultKey -GitHubKeys $gitHubKeys
 } else {
     foreach ($entry in $configMap.GetEnumerator()) {
@@ -182,13 +203,12 @@ if ($configMap.Count -eq 0) {
         if ($identityFilePath) {
             Test-IdentityFileConfiguration -alias $alias -identityFilePath $identityFilePath -GitHubKeys $gitHubKeys
         } else {
-            Write-Host "`n== [$alias] Skipped: No IdentityFile specified ==" -ForegroundColor DarkGray
+            Write-CheckResult -Message "Skipped alias '$alias': No IdentityFile specified" -Success $false
         }
     }
 }
 
-Write-Host "`n== Verifying Git Identity ==" -ForegroundColor Cyan
-git config --global user.name
-git config --global user.email
+Write-CheckResult -Message "Verifying Git global user.name" -Success ($null -ne (git config --global user.name))
+Write-CheckResult -Message "Verifying Git global user.email" -Success ($null -ne (git config --global user.email))
 
 Write-Host "`nAll tests complete." -ForegroundColor Cyan
