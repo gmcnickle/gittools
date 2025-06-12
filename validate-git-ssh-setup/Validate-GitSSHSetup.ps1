@@ -8,6 +8,8 @@
     Personal Access Token for GitHub/GitHub Enterprise to verify registered SSH keys.
 .PARAMETER GitHubApiBaseUrl
     Optional base API URL for GitHub Enterprise (default: https://api.github.com).
+.PARAMETER SshConfigPath
+    Optional path to the SSH config file. Defaults to ~/.ssh/config. Use this if your config file has a non-standard name or location.
 .PARAMETER FixIdentityPaths
     Optional. Fixes backslashes in IdentityFile paths inside your SSH config file.
 .PARAMETER LogFile
@@ -18,12 +20,12 @@
 
 param (
     [string]$GitHubToken,
-    [string]$GitHubApiBaseUrl = "https://api.github.com",
+    [string]$GitHubApiBaseUrl = "https://api.github.com",   
+    [string]$SshConfigPath = "$env:USERPROFILE\.ssh\config",   
     [switch]$FixIdentityPaths,
     [string]$LogFile
 )
 
-$sshConfigPath = "$env:USERPROFILE\.ssh\config"
 $defaultKey = "$env:USERPROFILE\.ssh\id_ed25519"
 
 function Write-CheckResult {
