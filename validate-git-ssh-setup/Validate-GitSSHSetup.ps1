@@ -136,7 +136,7 @@ function Compare-PublicKey-ToGitHub {
     $localKeyClean = $localKey -replace '(\Assh-(rsa|ed25519) [A-Za-z0-9+/=]+).*', '$1'
 
     $found = $GitHubKeys | Where-Object { $_.key -eq $localKeyClean }
-    Write-CheckResult -Message "Local public key match on GitHub" -Success ($found -ne $null) -Indent 4
+    Write-CheckResult -Message "Local public key match on GitHub" -Success ($null -ne $found) -Indent 4
 }
 
 function Test-SshAgentRunning {
