@@ -5,6 +5,9 @@ ehthumbs.db
 Icon?
 desktop.ini
 
+# ---- visual studio ----
+.vs/
+
 # ---- VS Code ----
 .vscode/
 *.code-workspace
