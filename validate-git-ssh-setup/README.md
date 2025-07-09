@@ -21,26 +21,38 @@
 - (Optional) GitHub Personal Access Token with `read:user` or `read:public_key` scope
 
 
-## 📦 Usage
+## 💡 Usage
 
-### 🔍 Basic Usage
+Run the script from PowerShell to validate your SSH configuration for GitHub:
+
 ```powershell
-.\Validate-GitSSHSetup.ps1
+.\Validate-GitSshSetup.ps1
 ```
 
-### 🔐 Include GitHub Key Validation
-```powershell
-.\Validate-GitSSHSetup.ps1 -GitHubToken 'ghp_yourGitHubToken'
-```
+Optional parameters:
 
-### 🛠️ Fix Backslashes in IdentityFile Paths
-```powershell
-.\Validate-GitSSHSetup.ps1 -FixIdentityPaths
-```
+| Parameter           | Description |
+|---------------------|-------------|
+| `-GitHubToken`      | Your GitHub (or GitHub Enterprise) personal access token. Used to verify that your public SSH keys are properly registered. |
+| `-GitHubApiBaseUrl` | Optional. Defaults to `https://api.github.com`. Override this for GitHub Enterprise environments. |
+| `-SshConfigPath`    | Optional. Path to your SSH config file (default: `~/.ssh/config`). |
+| `-FixIdentityPaths` | Optional switch. Automatically replaces backslashes with forward slashes in `IdentityFile` paths in your SSH config. |
+| `-LogFile`          | Optional. Path to a log file for recording error details. |
+| `-SamlTestRepo`     | Optional. A Git remote path (e.g. `git@github.com:my-org/private-repo.git`) to test for SAML SSO restrictions. If omitted, the script will attempt to detect and use the current Git repo if you're inside one. |
+
+---
+
+### 🔒 SAML SSO Testing
+
+If you are working with an organization that enforces SAML Single Sign-On:
+
+- Provide `-SamlTestRepo` to test whether your SSH key has been authorized for use with that organization.
+- If omitted, the script tries to detect the current Git remote and use it automatically.
+- If SAML authorization is required but missing, you’ll be prompted with guidance on how to authorize your SSH key via GitHub settings.
 
 ### 🧪 Full Diagnostic Mode
 ```powershell
-.\Validate-GitSSHSetup.ps1 -GitHubToken 'ghp_...' -FixIdentityPaths -Debug
+.\Validate-GitSSHSetup.ps1 -GitHubToken 'ghp_...' -FixIdentityPaths -SamlTestRepo 'https://...' -Debug 
 ```
 
 
