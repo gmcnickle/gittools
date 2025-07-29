@@ -121,10 +121,34 @@ function Compare-PublicKey-ToGitHub {
     Write-CheckResult -Message "Local public key match on GitHub" -Success ($null -ne $found) -Indent 4
 }
 
-function Test-SshAgentRunning {
-    ssh-add -L | Out-Null
-    return ($LASTEXITCODE -eq 0)
+
+function Start-SshAgentIfNeeded {
+    function Test-SshAgentRunning {
+        ssh-add -L | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    }
+
+    if (Test-SshAgentRunning) {
+        return $true
+    }
+
+    try {
+        $agentOutput = & ssh-agent
+        if ($agentOutput -match "SSH_AUTH_SOCK=(.+?);") {
+            $env:SSH_AUTH_SOCK = $matches[1]
+        }
+        if ($agentOutput -match "SSH_AGENT_PID=(\d+);") {
+            $env:SSH_AGENT_PID = $matches[1]
+        }
+
+        Start-Sleep -Milliseconds 500
+        Write-CheckResult -Message "Started SSH agent" -Success $true -Indent 4
+        return (Test-SshAgentRunning)
+    } catch {
+        return $false
+    }
 }
+
 
 function Test-IdentityFileConfiguration {
     param (
@@ -134,21 +158,29 @@ function Test-IdentityFileConfiguration {
     )
     $identityExists = Test-Path $identityFilePath
     Write-CheckResult -Message "Validating IdentityFile for alias '$alias'" -Success $identityExists
-    if (-not $identityExists) { return }
+
+    if (-not $identityExists) 
+    { 
+        return 
+    }
+
     $publicKey = "$identityFilePath.pub"
+
     if (!(Test-Path $publicKey)) {
         Write-CheckResult -Message "Public key not found for alias '$alias'" -Success $false -Indent 4
     }
-    if (Test-SshAgentRunning) {
-        try {
-            ssh-add $identityFilePath | Out-Null
-            Write-CheckResult -Message "Added key to ssh-agent for alias '$alias'" -Success $true -Indent 4
-        } catch {
-            Write-CheckResult -Message "Failed to add key to ssh-agent for alias '$alias'" -Success $false -Indent 4 -Detail $_.Exception.Message
-        }
-    } else {
-        Write-CheckResult -Message "SSH agent not running for alias '$alias'" -Success $false -Indent 4
+
+    if (-not (Start-SshAgentIfNeeded)) {
+        Write-CheckResult -Message "SSH agent not running and could not be started" -Success $false -Indent 4
     }
+
+    try {
+        ssh-add $identityFilePath | Out-Null
+        Write-CheckResult -Message "Added key to ssh-agent for alias '$alias'" -Success $true -Indent 4
+    } catch {
+        Write-CheckResult -Message "Failed to add key to ssh-agent for alias '$alias'" -Success $false -Indent 4 -Detail $_.Exception.Message
+    }
+
     if ($GitHubKeys) {
         Compare-PublicKey-ToGitHub -PublicKeyPath $publicKey -GitHubKeys $GitHubKeys
     }
